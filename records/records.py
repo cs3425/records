@@ -1,32 +1,52 @@
+#!/usr/bin/env python
 
-# fill in the params dictionary, write functions to update it
-# with the entered arguments to __init__, write functions
-# to get_all_records and store results as a dataframe.
-# have all functions run during init so that the initialized
-# object calls the request and returns a full dataframe.
+"a package for pulling occurrence data from GBIF"
+
 
 import requests
 import pandas as pd
+import numpy as np
 
 
 class Records:
-    def __init__(self, q=None, interval=None):
+    """
+    Returns a Records class instance with GBIF occurrence records stored 
+    in a pandas DataFrame for a queried taxon between a range of years. 
+    Parameters:
+    -----------
+    q: str
+        Query taxonomic name. 
+    interval: tuple
+        Range of years to return results for. Should be (min, max) tuple.
+    Attributes:
+    -----------
+    baseurl: The REST API URL for GBIF.org.
+    params: The parameter dictionary to filter GBIF search.
+    df: Pandas DataFrame with returned records.
+    sdf: A view of the 'df' DataFrame selecting only three relevant columns.
+    """
+    def __init__(self, q, interval, **kwargs):
+        # the API url for searching GBIF occurrences
+        self.baseurl = "http://api.gbif.org/v1/occurrence/search?"
 
-        self.q = q
-        self.interval = interval
-        self.form_interval = ','.join(str(i) for i in self.interval)  # format interval input as "str,str"
+        # the default REST API options plus user entered args
         self.params = {
-            "q": self.q,
-            "year": self.form_interval,
-            "basisOfRecord": "PRESERVED_SPECIMEN",
-            "hasCoordinate": "true",
-            "hasGeospatialIssue": "false",
+            'q': q,
+            'year': ",".join([str(i) for i in interval]),
+            'basisOfRecord': "PRESERVED_SPECIMEN",
+            'hasCoordinate': "true",
+            'hasGeospatialIssue': "false",
             "country": "US",
             "offset": "0",
-            "limit": "300"
+            "limit": "300",
         }
+
+        # allow users to enter or modify other params using kwargs
         self.params.update(kwargs)
-        self.df = self._get_all_records()  # stores the return var
+
+        # run the request query until all records are obtained
+        self.df = pd.DataFrame(self._get_all_records())
+
 
     @property
     def sdf(self):
@@ -39,34 +59,34 @@ class Records:
         """
         return self.df[["species", "year", "country", "stateProvince"]]
 
+
     def _get_all_records(self):
         "iterate until end of records"
-        start = 0
-        data = []  # append all the data to this empty list (fill as we go)
-
-        baseurl = "http://api.gbif.org/v1/occurrence/search?"
-
+        data = []
         while 1:
             # make request and store results
             res = requests.get(
-                url=baseurl,
-                params=self.params,  # params dict gets updated every iteration by code below
+                url=self.baseurl, 
+                params=self.params,
             )
 
+            # check for errors
             res.raise_for_status()
 
             # increment counter
             self.params["offset"] = str(int(self.params["offset"]) + 300)
-
-            # concatenate data
+            
+            # get data as json list of dicts and add to 'data' list
             idata = res.json()
             data += idata["results"]
-
+            
             # stop when end of record is reached
-            if idata["endOfRecords"]:  # attribute of data, when true we exit
+            if idata["endOfRecords"]:
                 break
+            
+        return data
 
-        return pd.DataFrame(data)
+
 class Epochs:
     """
     Returns an Epochs class instance that includes GBIF occurrence records 

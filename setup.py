@@ -1,11 +1,25 @@
+#!/usr/bin/env python
 
-import toyplot
-import requests
-import pandas as pd
+from setuptools import setup, find_packages
 
-from setuptools import setup
+
+# parse version string from the __init__ file
+with open("records/__init__.py", "r") as initfile:
+    lines = initfile.readlines()
+    for line in lines:
+        if "__version__" in line:
+            # get version line and strip white space and quotations
+            version = line.strip().split()[-1].strip("'").strip('"')
+
+
+# build command
 setup(
-    name="mypackage",
-    version="0.1",
-    packages=["records"],
+    name="records",
+    version=version,
+    packages=find_packages(),
+    author="Deren Eaton",
+    author_email="de2356@columbia.edu",
+    license="GPLv3",
+    description="A package for querying GBIF",
+    classifiers=["Programming Language :: Python :: 3"],
 )
